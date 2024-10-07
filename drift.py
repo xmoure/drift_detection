@@ -182,6 +182,7 @@ def get_mongo_splits_connection():
     # MongoDB connection details
     mongo_connection_string = os.getenv("MONGO_DB_CONNECTION_STRING")
     mongo_db= os.getenv("MONGO_DB")
+    print(f"MONGO_DB: {mongo_db} (type: {type(mongo_db)})")
     mongo_collection_splits= os.getenv("MONGO_COLLECTION_SPLITS")
     mongo_client = MongoClient(mongo_connection_string)
     db = mongo_client[mongo_db]
