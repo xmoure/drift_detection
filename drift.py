@@ -249,9 +249,12 @@ if __name__ == "__main__":
         embeddings_train = pickle.load(f)
 
     drift_report_name = f"drift_report_referenceSplit_vs_{split_name}.html"
+
+    print("RUNNING DRIFT DETECTOR")
     
     detect_drift(embeddings_train, new_embeddings, "REFERENCE SPLIT", split_name, drift_report_name, drift_report_path, ml_flow_experiment)
 
+    print("UPDATING SPLIT COLLECTION")
     update_split_status(split_id)
 
 
