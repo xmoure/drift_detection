@@ -17,7 +17,6 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, normalize
 import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
-import pymongo
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
@@ -53,8 +52,6 @@ def load_and_downsample_image_paths(data_folder):
         rng = np.random.default_rng(seed=42)
         rng.shuffle(empty)
         empty = empty[:len(occupied)]
-
-    print(f"Downsampled empty samples: {len(empty)}")
 
     # Combine paths
     paths = np.array(occupied + empty)
@@ -142,7 +139,6 @@ def detect_drift(embeddings_train, embeddings_test, reference_split_name, curren
         embeddings_drift_metric_mmd,
         embeddings_drift_metric_ratio,
         embeddings_drift_metric_model
-        #embeddings_drift_metric_distance
     ])
 
     # Run the report to calculate the drift
@@ -214,16 +210,12 @@ if __name__ == "__main__":
             params = params["extract_embeddings"]
         except yaml.YAMLError as exc:
             print(exc)
-
-    print("params", params)
     
     model_location = params['MODEL_FOLDER']
 
     STORE_EMBEDDINGS_PATH = params['STORE_EMBEDDINGS_PATH']
 
     model_path = os.path.expanduser(model_location)
-
-    print("model_path", model_path)
 
     encoder = load_model(model_path) if os.path.exists(model_path) else None
     if not encoder:
@@ -238,11 +230,7 @@ if __name__ == "__main__":
     split_path = args.split_path
     split_id = args.split_id
 
-    print("split_paty", split_path)
-    print("split_id", split_id)
-
     split_name = os.path.basename(split_path)
-    print(split_name)
 
     print("### Loading the data and generating embeddings")
     new_image_paths = load_and_downsample_image_paths(split_path)
