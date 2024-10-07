@@ -20,8 +20,9 @@ from mlflow.tracking import MlflowClient
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
 from dotenv import load_dotenv
+import base64
 
 load_dotenv()
 
@@ -63,7 +64,7 @@ def load_and_downsample_image_paths(data_folder):
 
     return paths
 
-def send_email(new_split, mmd_drift_detected, ratio_drift_detected, model_drift_detected):
+def send_email(new_split, mmd_drift_detected, ratio_drift_detected, model_drift_detected, attachment_path=None):
     api_key = os.getenv("SENDGRID_API_KEY")
     to_email = os.getenv("TO_EMAIL")
     from_email = os.getenv("FROM_EMAIL")
@@ -111,6 +112,23 @@ def send_email(new_split, mmd_drift_detected, ratio_drift_detected, model_drift_
         plain_text_content=body_text_combined,
         html_content=body_html_combined
     )
+
+    # Add attachment if provided
+    if attachment_path:
+        with open(attachment_path, "rb") as f:
+            file_data = f.read()
+            encoded_file = base64.b64encode(file_data).decode()
+        
+        # Create the attachment
+        attachment = Attachment(
+            FileContent(encoded_file),
+            FileName(os.path.basename(attachment_path)),
+            FileType("application/octet-stream"),
+            Disposition("attachment")
+        )
+        
+        # Add the attachment to the email
+        message.attachment = attachment
 
     try:
         sg = SendGridAPIClient(api_key)
@@ -239,7 +257,7 @@ def detect_drift(embeddings_train, embeddings_test, reference_split_name, curren
 
     print("Drift detection results logged in MLflow.")
 
-    send_email(current_split_name, mmd_result, ratio_result, model_result)
+    send_email(current_split_name, mmd_result, ratio_result, model_result, path)
 
 def get_mongo_splits_connection():
     # MongoDB connection details
@@ -327,7 +345,7 @@ if __name__ == "__main__":
     with open(reference_emb_path, "rb") as f:
         embeddings_train = pickle.load(f)
 
-    drift_report_name = f"drift_report_referenceSplit_vs_{split_name}.html"
+    drift_report_name = f"drift_report_referencesplit_vs_{split_name}.html"
 
     print("RUNNING DRIFT DETECTOR")
     
@@ -335,5 +353,4 @@ if __name__ == "__main__":
 
     print("UPDATING SPLIT COLLECTION")
     update_split_status(split_id)
-
 
