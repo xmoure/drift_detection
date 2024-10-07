@@ -40,6 +40,28 @@ def preprocess_image_paths(image_paths):
     return images
 
 
+def load_and_downsample_image_paths(data_folder):
+
+    occupied = glob(os.path.join(data_folder, "[!empty]*/*.png"))
+    empty = glob(os.path.join(data_folder, "empty/*.png"))
+
+    print(f"Occupied samples: {len(occupied)}")
+    print(f"Empty samples: {len(empty)}")
+
+    # Downsample the empty class to match the number of occupied samples
+    if len(empty) > len(occupied):
+        rng = np.random.default_rng(seed=42)
+        rng.shuffle(empty)
+        empty = empty[:len(occupied)]
+
+    print(f"Downsampled empty samples: {len(empty)}")
+
+    # Combine paths
+    paths = np.array(occupied + empty)
+
+    return paths
+
+
 def detect_drift(embeddings_train, embeddings_test, reference_split_name, current_split_name, file_name, full_path, ml_flow_experiment):
 
     client = MlflowClient()
@@ -223,7 +245,8 @@ if __name__ == "__main__":
     print(split_name)
 
     print("### Loading the data and generating embeddings")
-    image_dataset = create_dataset(split_path)
+    new_image_paths = load_and_downsample_image_paths(split_path)
+    image_dataset = create_dataset(new_image_paths)
     new_embeddings = encoder.predict(image_dataset)
 
     embeddings_path = f"{STORE_EMBEDDINGS_PATH}/{split_name}_embeddings.pkl"
