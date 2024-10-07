@@ -19,6 +19,11 @@ import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def load_image(path):
     img = tf.io.read_file(path)
@@ -57,6 +62,62 @@ def load_and_downsample_image_paths(data_folder):
     paths = np.array(occupied + empty)
 
     return paths
+
+def send_email(new_split, mmd_drift_detected, ratio_drift_detected, model_drift_detected):
+    api_key = os.getenv("SENDGRID_API_KEY")
+    to_email = os.getenv("TO_EMAIL")
+    from_email = os.getenv("FROM_EMAIL")
+
+    subject = "Drift Detection Alert"
+
+    if mmd_drift_detected or ratio_drift_detected or model_drift_detected:
+        subject = "Drift Detected"
+    else:
+        subject= "No Drift Detected"
+
+    body_text = f"Hello, this is an automated notification regarding drift detection in your model. Drift detection was done between reference split and  {new_split}."
+
+    drift_details_text = f"""
+    Drift Detection Results:
+    - MMD Drift: {'Detected' if mmd_drift_detected else 'Not Detected'}
+    - Ratio Drift: {'Detected' if ratio_drift_detected else 'Not Detected'}
+    - Model Drift: {'Detected' if model_drift_detected else 'Not Detected'}
+    """
+
+    drift_details_html = f"""
+    <h2>Drift Detection Results:</h2>
+    <ul>
+        <li><strong>MMD Drift:</strong> {'Detected' if mmd_drift_detected else 'Not Detected'}</li>
+        <li><strong>Ratio Drift:</strong> {'Detected' if ratio_drift_detected else 'Not Detected'}</li>
+        <li><strong>Model Drift:</strong> {'Detected' if model_drift_detected else 'Not Detected'}</li>
+    </ul>
+    """
+
+    # Combine general body text with drift details for plain text and HTML
+    body_text_combined = f"{body_text}\n\n{drift_details_text}"
+    body_html_combined = f"""
+    <html>
+    <body>
+        <p>{body_text}</p>
+        {drift_details_html}
+    </body>
+    </html>
+    """
+
+    message = Mail(
+        from_email=from_email,
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=body_text_combined,
+        html_content=body_html_combined
+    )
+
+    try:
+        sg = SendGridAPIClient(api_key)
+        response = sg.send(message)
+        print(f"Email sent successfully: {response.status_code}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 
 def detect_drift(embeddings_train, embeddings_test, reference_split_name, current_split_name, file_name, full_path, ml_flow_experiment):
@@ -177,6 +238,8 @@ def detect_drift(embeddings_train, embeddings_test, reference_split_name, curren
         mlflow.log_artifact(artifact_path)
 
     print("Drift detection results logged in MLflow.")
+
+    send_email(current_split_name, mmd_result, ratio_result, model_result)
 
 def get_mongo_splits_connection():
     # MongoDB connection details
