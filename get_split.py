@@ -32,8 +32,6 @@ def get_split_to_detect_drift():
         sort=[("date_created", 1)]
     )
 
-    print("result", result)
-
     if result is None:
         print("No matching document found.")
         return None
