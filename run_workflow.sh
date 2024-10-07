@@ -14,6 +14,9 @@ fi
 split_path=$(echo $split_info | awk '{print $1}')
 split_id=$(echo $split_info | awk '{print $2}')
 
+
+split_path="$HOME/$split_path"
+
 # Print split_path and split_id to verify parsing
 echo "Split path: $split_path"
 echo "Split ID: $split_id"
