@@ -10,17 +10,15 @@ if [ $? -ne 0 ]; then
     exit 0
 fi
 
-echo "split_info: $split_info"
-
 # Parse the split_path and split_id from the output
-split_path=$(echo $split_info | cut -d ' ' -f1)
-split_id=$(echo $split_info | cut -d ' ' -f2)
+split_path=$(echo $split_info | awk '{print $1}')
+split_id=$(echo $split_info | awk '{print $2}')
 
 # Print split_path and split_id to verify parsing
-echo "split_path: $split_path"
-echo "split_id: $split_id"
+echo "Split path: $split_path"
+echo "Split ID: $split_id"
 
 # Run drift.py with the retrieved split_path and split_id
-poetry run python drift.py --split_path $split_path --split_id $split_id
+poetry run python drift.py --split_path "$split_path" --split_id "$split_id"
 
 echo "Workflow completed."

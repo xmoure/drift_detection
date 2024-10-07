@@ -39,16 +39,11 @@ def get_split_to_detect_drift():
         return None
     else:
         split_path = result.get("split_path")
-        split_id = result.get("_id")
-        print(f"Document found with split path: {split_path}")
+        split_id = str(result.get("_id"))  # Convert ObjectId to string
+        print(f"{split_path} {split_id}")
         return split_path, split_id
-
-
 
 if __name__ == "__main__":
     split_info = get_split_to_detect_drift()
-    if split_info:
-        split_path, split_id = split_info
-        print(f"Split path: {split_path}, Split ID: {split_id}")
-    else:
-        exit(1) 
+    if not split_info:
+        exit(1)
