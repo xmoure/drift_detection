@@ -3,9 +3,6 @@
 # Navigate to the project directory
 cd ~/drift_detection
 
-# Activate the Poetry environment
-source $HOME/.local/bin/poetry
-
 # Run get_split.py and capture the output
 split_info=$(poetry run python get_split.py)
 if [ $? -ne 0 ]; then
