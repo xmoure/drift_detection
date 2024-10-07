@@ -192,12 +192,16 @@ if __name__ == "__main__":
             params = params["extract_embeddings"]
         except yaml.YAMLError as exc:
             print(exc)
+
+    print("params", params)
     
     model_location = params['MODEL_FOLDER']
 
     STORE_EMBEDDINGS_PATH = params['STORE_EMBEDDINGS_PATH']
 
     model_path = os.path.expanduser(model_location)
+
+    print("model_path", model_path)
 
     encoder = load_model(model_path) if os.path.exists(model_path) else None
     if not encoder:
@@ -211,6 +215,9 @@ if __name__ == "__main__":
 
     split_path = args.split_path
     split_id = args.split_id
+
+    print("split_paty", split_path)
+    print("split_id", split_id)
 
     split_name = os.path.basename(split_path)
     print(split_name)
