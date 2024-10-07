@@ -178,16 +178,20 @@ def detect_drift(embeddings_train, embeddings_test, reference_split_name, curren
 
     print("Drift detection results logged in MLflow.")
 
+def get_mongo_splits_connection():
+    # MongoDB connection details
+    mongo_connection_string = os.getenv("MONGO_DB_CONNECTION_STRING")
+    mongo_db= os.getenv("MONGO_DB")
+    mongo_collection_splits= os.getenv("MONGO_COLLECTION_SPLITS")
+    mongo_client = MongoClient(mongo_connection_string)
+    db = mongo_client[mongo_db]
+    splits_collection = db[mongo_collection_splits]
+    return splits_collection
+
 
 def update_split_status(split_id):
-    # Initialize MongoDB connection
-    mongo_connection_string = os.getenv("MONGO_DB_CONNECTION_STRING")
-    mongo_db = os.getenv("MONGO_DB")
-    mongo_collection_splits = os.getenv("MONGO_COLLECTION_SPLITS")
     
-    client = MongoClient(mongo_connection_string)
-    db = client[mongo_db]
-    splits_collection = db[mongo_collection_splits]
+    splits_collection = get_mongo_splits_connection()
 
     result = splits_collection.update_one(
         {"_id": ObjectId(split_id)},
