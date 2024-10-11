@@ -165,8 +165,10 @@ def send_email(new_split, drift_detected_with_ref_split, drift_detected_previous
 
 
 def detect_drift(split_name, split_path, reference_path, accuracy_drop_threshold, f1_drop_threshold, model, report_path, ml_flow_experiment ):
+
     client = MlflowClient()
     mlflow.set_experiment(ml_flow_experiment)
+    drift_detected_prev = False
     # --- Start MLflow Run ---
     with mlflow.start_run() as run:
         mlflow.set_tag("split_name", split_name)
