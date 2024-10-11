@@ -216,7 +216,6 @@ def detect_drift(split_name, split_path, reference_path, accuracy_drop_threshold
 
             # Process the new split
             images_new, labels_new , img_paths_new= load_images_and_labels(split_path, categories)
-            images_new = images_ref
             predictions_new = get_model_predictions(model, images_new)
             batch_errors_new = batch_error_rates(model, images_new, labels_new)
             accuracy_new, precision_new, recall_new, f1_new = get_metrics(labels_new, predictions_new)
@@ -317,7 +316,7 @@ def detect_drift(split_name, split_path, reference_path, accuracy_drop_threshold
 
         print("Run completed and all data logged to MLflow!")
 
-    send_email(split_name, drift_detected_ref, drift_detected_prev, accuracy_new, path)
+        send_email(split_name, drift_detected_ref, drift_detected_prev, accuracy_new, path)
 
 
 
