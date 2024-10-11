@@ -198,6 +198,7 @@ def detect_drift(split_name, split_path, reference_path, accuracy_drop_threshold
             mlflow.set_tag("mlflow.runName", "reference_run")
         else:
             mlflow.set_tag("mlflow.runName", f"{split_name}_run")
+            print("reference exists")
             # Load reference error rates from MLflow
             ref_run_id = reference_run.iloc[0]["run_id"]
             ref_errors_path = mlflow.artifacts.download_artifacts(run_id=ref_run_id, artifact_path="reference_batch_errors.csv")
@@ -214,109 +215,109 @@ def detect_drift(split_name, split_path, reference_path, accuracy_drop_threshold
                 print("Reference predictions or labels not found in MLflow artifacts. Skipping Evidently report generation.")
                 predictions_ref, labels_ref = None, None  # Set to None if loading fails
 
-            # Process the new split
-            images_new, labels_new , img_paths_new= load_images_and_labels(split_path, categories)
-            predictions_new = get_model_predictions(model, images_new)
-            batch_errors_new = batch_error_rates(model, images_new, labels_new)
-            accuracy_new, precision_new, recall_new, f1_new = get_metrics(labels_new, predictions_new)
+        # Process the new split
+        images_new, labels_new , img_paths_new= load_images_and_labels(split_path, categories)
+        predictions_new = get_model_predictions(model, images_new)
+        batch_errors_new = batch_error_rates(model, images_new, labels_new)
+        accuracy_new, precision_new, recall_new, f1_new = get_metrics(labels_new, predictions_new)
 
-            # Log new split metrics and error rates to MLflow
-            mlflow.log_metrics({
-                f"{split_name}_accuracy": accuracy_new,
-                f"{split_name}_precision": precision_new,
-                f"{split_name}_recall": recall_new,
-                f"{split_name}_f1": f1_new
-            })
-            error_file = f"previous_batch_errors.csv"
-            np.savetxt(error_file, batch_errors_new, delimiter=",")
-            mlflow.log_artifact(error_file)
+        # Log new split metrics and error rates to MLflow
+        mlflow.log_metrics({
+            f"{split_name}_accuracy": accuracy_new,
+            f"{split_name}_precision": precision_new,
+            f"{split_name}_recall": recall_new,
+            f"{split_name}_f1": f1_new
+        })
+        error_file = f"previous_batch_errors.csv"
+        np.savetxt(error_file, batch_errors_new, delimiter=",")
+        mlflow.log_artifact(error_file)
 
-            # Check for Incremental Drift with Previous Errors
-            current_run_id = mlflow.active_run().info.run_id
+        # Check for Incremental Drift with Previous Errors
+        current_run_id = mlflow.active_run().info.run_id
 
-            previous_run = mlflow.search_runs(
-                order_by=["start_time DESC"],
-                max_results=1,
-                filter_string=f"tags.mlflow.runName != 'reference_run' AND status = 'FINISHED' AND run_id != '{current_run_id}'"
-            )
-            if not previous_run.empty:
-                previous_run_id = previous_run.iloc[0]["run_id"]
-                try:
-                    # Try downloading the previous batch errors artifact
-                    previous_errors_path = mlflow.artifacts.download_artifacts(run_id=previous_run_id,  artifact_path="previous_batch_errors.csv")
-                    batch_errors_previous = np.loadtxt(previous_errors_path, delimiter=",")
-                    print("Current Batch Error Rates:", batch_errors_new)
-                    print("Previous Batch Error Rates:", batch_errors_previous)
+        previous_run = mlflow.search_runs(
+            order_by=["start_time DESC"],
+            max_results=1,
+            filter_string=f"tags.mlflow.runName != 'reference_run' AND status = 'FINISHED' AND run_id != '{current_run_id}'"
+        )
+        if not previous_run.empty:
+            previous_run_id = previous_run.iloc[0]["run_id"]
+            try:
+                # Try downloading the previous batch errors artifact
+                previous_errors_path = mlflow.artifacts.download_artifacts(run_id=previous_run_id,  artifact_path="previous_batch_errors.csv")
+                batch_errors_previous = np.loadtxt(previous_errors_path, delimiter=",")
+                print("Current Batch Error Rates:", batch_errors_new)
+                print("Previous Batch Error Rates:", batch_errors_previous)
 
-                    # Run drift checks
-                    wd_prev = wasserstein_distance(batch_errors_previous, batch_errors_new)
-                    # Detect drift based on threshold
-                    drift_detected_prev = wd_prev > ws_threshold_prev
+                # Run drift checks
+                wd_prev = wasserstein_distance(batch_errors_previous, batch_errors_new)
+                # Detect drift based on threshold
+                drift_detected_prev = wd_prev > ws_threshold_prev
 
-                    # Log drift detection results
-                    mlflow.log_metric(f"{split_name}_wasserstein_distance_prev", wd_prev)
-                    mlflow.log_metric(f"{split_name}_drift_detected_prev", int(drift_detected_prev))
+                # Log drift detection results
+                mlflow.log_metric(f"{split_name}_wasserstein_distance_prev", wd_prev)
+                mlflow.log_metric(f"{split_name}_drift_detected_prev", int(drift_detected_prev))
 
-                except OSError:
-                    print("No previous batch errors file found in MLflow artifacts. Skipping comparison for this run.")
-            else:
-                print("No previous run found. Skipping comparison for this run.")
+            except OSError:
+                print("No previous batch errors file found in MLflow artifacts. Skipping comparison for this run.")
+        else:
+            print("No previous run found. Skipping comparison for this run.")
 
-            # Save new batch errors in MLflow as an artifact for the next run
-            np.savetxt("previous_batch_errors.csv", batch_errors_new, delimiter=",")
-            mlflow.log_artifact("previous_batch_errors.csv")
+        # Save new batch errors in MLflow as an artifact for the next run
+        np.savetxt("previous_batch_errors.csv", batch_errors_new, delimiter=",")
+        mlflow.log_artifact("previous_batch_errors.csv")
 
-            # --- Long-Term Drift Detection with Reference Split ---
-            wd_ref = wasserstein_distance(batch_errors_ref, batch_errors_new)
-            # Detect drift based on threshold
-            drift_detected_ref = wd_ref > ws_threshold
+        # --- Long-Term Drift Detection with Reference Split ---
+        wd_ref = wasserstein_distance(batch_errors_ref, batch_errors_new)
+        # Detect drift based on threshold
+        drift_detected_ref = wd_ref > ws_threshold
 
-            mlflow.log_metric(f"{split_name}_wasserstein_distance_ref", wd_ref)
-            mlflow.log_metric(f"{split_name}_drift_detected_ref", int(drift_detected_ref))
+        mlflow.log_metric(f"{split_name}_wasserstein_distance_ref", wd_ref)
+        mlflow.log_metric(f"{split_name}_drift_detected_ref", int(drift_detected_ref))
 
-            #--- Generate and Log Evidently Report ---
-            # Generate and Log Evidently Report if Reference Predictions and Labels are Available
-            if predictions_ref is not None and labels_ref is not None:
-                reference_data = pd.DataFrame({'prediction': predictions_ref, 'target': labels_ref, 'dataset': 'reference'})
-                new_data = pd.DataFrame({'prediction': predictions_new, 'target': labels_new, 'dataset': 'new'})
-                classification_report = Report(metrics=[ClassificationPreset()])
-                classification_report.run(reference_data=reference_data, current_data=new_data)
+        #--- Generate and Log Evidently Report ---
+        # Generate and Log Evidently Report if Reference Predictions and Labels are Available
+        if predictions_ref is not None and labels_ref is not None:
+            reference_data = pd.DataFrame({'prediction': predictions_ref, 'target': labels_ref, 'dataset': 'reference'})
+            new_data = pd.DataFrame({'prediction': predictions_new, 'target': labels_new, 'dataset': 'new'})
+            classification_report = Report(metrics=[ClassificationPreset()])
+            classification_report.run(reference_data=reference_data, current_data=new_data)
 
-                # Save and log the Evidently report
-                report_file = f"{split_name}_classification_report.html"
-                path = f"{report_path}{report_file}"
-                classification_report.save_html(path)
-                mlflow.log_artifact(path)
+            # Save and log the Evidently report
+            report_file = f"{split_name}_classification_report.html"
+            path = f"{report_path}{report_file}"
+            classification_report.save_html(path)
+            mlflow.log_artifact(path)
 
-                results = classification_report.as_dict()
-                current_metrics = results["metrics"][0]["result"]["current"]
-                reference_metrics = results["metrics"][0]["result"]["reference"]
-                accuracy_current = current_metrics["accuracy"]
-                f1_current = current_metrics["f1"]
-                recall_current = current_metrics["recall"]
-                accuracy_reference = reference_metrics["accuracy"]
-                f1_reference = reference_metrics["f1"]
+            results = classification_report.as_dict()
+            current_metrics = results["metrics"][0]["result"]["current"]
+            reference_metrics = results["metrics"][0]["result"]["reference"]
+            accuracy_current = current_metrics["accuracy"]
+            f1_current = current_metrics["f1"]
+            recall_current = current_metrics["recall"]
+            accuracy_reference = reference_metrics["accuracy"]
+            f1_reference = reference_metrics["f1"]
 
-                accuracy_significant_drop = (accuracy_reference - accuracy_current) > (accuracy_reference * accuracy_drop_threshold)
-                f1_significant_drop = (f1_reference - f1_current) > (f1_reference * f1_drop_threshold)
-                print("Significant Accuracy Drop:", accuracy_significant_drop)
-                print("Significant F1 Score Drop:", f1_significant_drop)
+            accuracy_significant_drop = (accuracy_reference - accuracy_current) > (accuracy_reference * accuracy_drop_threshold)
+            f1_significant_drop = (f1_reference - f1_current) > (f1_reference * f1_drop_threshold)
+            print("Significant Accuracy Drop:", accuracy_significant_drop)
+            print("Significant F1 Score Drop:", f1_significant_drop)
 
-                mlflow.log_metric("accuracy_significant_drop", int(accuracy_significant_drop))
-                mlflow.log_metric("f1_significant_drop", int(f1_significant_drop))
-                mlflow.log_metric(f"{split_name}_accuracy", accuracy_current)
-                mlflow.log_metric(f"{split_name}_f1", f1_current)
-                mlflow.log_metric(f"{split_name}_recall", recall_current)
+            mlflow.log_metric("accuracy_significant_drop", int(accuracy_significant_drop))
+            mlflow.log_metric("f1_significant_drop", int(f1_significant_drop))
+            mlflow.log_metric(f"{split_name}_accuracy", accuracy_current)
+            mlflow.log_metric(f"{split_name}_f1", f1_current)
+            mlflow.log_metric(f"{split_name}_recall", recall_current)
 
-            else:
-                print("Skipping Evidently report as reference predictions and labels are unavailable.")
+        else:
+            print("Skipping Evidently report as reference predictions and labels are unavailable.")
 
-            # Log long-term drift results
-            mlflow.log_metric(f"{split_name}_wasserstein_distance_ref", wd_ref)
+        # Log long-term drift results
+        mlflow.log_metric(f"{split_name}_wasserstein_distance_ref", wd_ref)
 
-        print("Run completed and all data logged to MLflow!")
+    print("Run completed and all data logged to MLflow!")
 
-        send_email(split_name, drift_detected_ref, drift_detected_prev, accuracy_new, path)
+    send_email(split_name, drift_detected_ref, drift_detected_prev, accuracy_new, path)
 
 
 
