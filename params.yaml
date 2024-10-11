@@ -1,6 +1,9 @@
 extract_embeddings:
   MODEL_FOLDER: '~/chess_games/models/encoder_model.h5'
+  PRODUCTION_MODEL_FOLDER: '~/chess_games/models/mobilenet_v2_occupancy_tf216.keras'
   STORE_EMBEDDINGS_PATH: '~/chess_games/embeddings'
   REFERENCE_EMBEDDINGS: '~/chess_games/embeddings/x_ref_embeddings_autov3.pkl'
   REPORT_PATH: '~/chess_games/drift_reports/'
   ML_FLOW_EXPERIMENT: 'Drift Analysis using embeddings'
+  ML_FLOW_CONCEPT_DRIFT_EXPERIMENT: 'Concept Drift Analysis'
+  REFERENCE_DATASET_PATH: '~/chess_games/images/reference_dataset'

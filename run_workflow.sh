@@ -21,6 +21,15 @@ split_path="$HOME/$split_path"
 echo "Split path: $split_path"
 echo "Split ID: $split_id"
 
+# Run concept_drift.py with the retrieved split_path and split_id
+echo "Running concept drift detection on split: $split_path"
+poetry run python concept_drift.py --split_path $split_path --split_id $split_id
+if [ $? -ne 0 ]; then
+    echo "Concept drift detection failed. Exiting."
+    exit 1
+fi
+
+echo "Running drift detection on split: $split_path"
 # Run drift.py with the retrieved split_path and split_id
 poetry run python drift.py --split_path "$split_path" --split_id "$split_id"
 
